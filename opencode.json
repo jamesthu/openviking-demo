@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "*": "deny",
+    "ov_ingest": "allow",
+    "memsearch": "allow",
+    "memgrep": "allow",
+    "memglob": "allow",
+    "memread": "allow",
+    "membrowse": "allow",
+    "memcommit": "allow"
+  }
+}

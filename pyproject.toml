@@ -1,0 +1,20 @@
+[project]
+name = "openviking-opencode-bridge"
+version = "0.1.0"
+description = "Minimal OpenCode to OpenViking bridge"
+requires-python = ">=3.10"
+dependencies = [
+  "openviking>=0.3.8",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.2",
+]
+
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = false
