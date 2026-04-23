@@ -2,6 +2,11 @@ import type { Plugin } from "@opencode-ai/plugin"
 import { tool } from "@opencode-ai/plugin"
 import { spawn } from "node:child_process"
 import { resolve } from "node:path"
+import {
+  buildIngestCliArgs,
+  collectUserFileParts,
+  materializeAttachments,
+} from "./openviking-attachments.ts"
 
 const bridgeScript = "scripts/openviking_bridge.py"
 const bridgePython = ".venv/bin/python"
@@ -67,17 +72,76 @@ async function runBridge(
 }
 
 export const OpenVikingMemoryPlugin: Plugin = async ({
+  client,
   worktree,
   directory,
+  serverUrl,
 }) => {
   const cwd = projectRoot
 
+  async function stageLatestUserUploads(sessionID?: string) {
+    if (!sessionID) {
+      return {
+        ok: true,
+        saved_paths: [],
+        message: "No active session; nothing to stage.",
+      }
+    }
+
+    const response = await client.session.messages({
+      path: {
+        id: sessionID,
+      },
+      query: {
+        directory: cwd,
+      },
+    })
+
+    if (response.error) {
+      throw new Error(`Failed to load session messages: ${JSON.stringify(response.error)}`)
+    }
+
+    const attachments = collectUserFileParts(response.data ?? [])
+    if (attachments.length === 0) {
+      return {
+        ok: true,
+        saved_paths: [],
+        message: "No file attachments found on the latest user message.",
+      }
+    }
+
+    const savedPaths = await materializeAttachments({
+      projectRoot: cwd,
+      serverUrl,
+      attachments,
+    })
+
+    return {
+      ok: true,
+      saved_paths: savedPaths,
+      count: savedPaths.length,
+    }
+  }
+
   return {
     tool: {
+      ov_stage_uploads: tool({
+        description:
+          "把当前会话里最新一条用户消息上传的附件落盘到项目的 materials/incoming/ 目录，并返回具体本地路径。先用这个工具拿到 saved_paths，再把这些路径传给 ov_ingest，会比每次整目录导入更稳。",
+        args: {},
+        async execute(_args, context) {
+          const result = await stageLatestUserUploads(context.sessionID)
+          return JSON.stringify(result, null, 2)
+        },
+      }),
       ov_ingest: tool({
         description:
-          "把项目里的 materials/incoming 固定导入到 OpenViking 资源库。不要传项目根目录。导入后通常先用 membrowse 查看生成的资源树，再决定具体 memread 的 URI。",
+          "把指定本地文件或目录导入到 OpenViking 资源库。默认导入 materials/incoming。不要传项目根目录。若文件来自 Web 上传，建议先用 ov_stage_uploads 落盘，再把返回的 saved_paths 传给这个工具，避免每次整目录导入。",
         args: {
+          path: tool.schema
+            .string()
+            .optional()
+            .describe("要导入的本地文件或目录路径。默认是 materials/incoming；如果前一步用了 ov_stage_uploads，优先传它返回的 saved_paths 里的具体路径"),
           target_uri: tool.schema
             .string()
             .optional()
@@ -88,9 +152,7 @@ export const OpenVikingMemoryPlugin: Plugin = async ({
             .describe("是否等待 OpenViking 完成处理"),
         },
         async execute(args, context) {
-          const cliArgs = ["ingest", "materials/incoming"]
-          if (args.target_uri) cliArgs.push("--target-uri", args.target_uri)
-          if (args.wait) cliArgs.push("--wait")
+          const cliArgs = buildIngestCliArgs(args)
           return runBridge(cwd, context, cliArgs)
         },
       }),

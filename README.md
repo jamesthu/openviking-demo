@@ -92,6 +92,7 @@ opencode web --port 4096
 
 插件目前暴露了这些工具：
 
+- `ov_stage_uploads`：把当前会话最新一条用户消息里的上传附件落盘到 `materials/incoming/`
 - `ov_ingest`：把本地文件或目录导入 OpenViking
 - `memsearch`：搜索 OpenViking
 - `memgrep`：在指定 URI 范围内做精确文本匹配
@@ -123,10 +124,16 @@ opencode web --port 4096
 
 4. 在 OpenCode 里直接使用这些工具
 
-推荐先导入材料目录：
+如果文件来自 Web 上传，推荐先落盘再导入：
+
+- `ov_stage_uploads`
+  返回：`saved_paths`
+
+然后再导入具体路径：
 
 - `ov_ingest`
-  固定导入：`materials/incoming`
+  默认导入：`materials/incoming`
+  推荐传入：`path=<ov_stage_uploads 返回的具体路径>`
   可选：`target_uri=viking://resources/openviking-demo/`
   可选：`wait=true`
 
