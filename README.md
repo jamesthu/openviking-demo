@@ -81,6 +81,7 @@ opencode web --port 4096
 - 原始文件到 OpenViking 的导入链路
 - OpenCode 与 OpenViking 的本地集成
 - 让 OpenCode 可以消费 OpenViking 中的上下文与检索结果
+- 让用户在对话里逐步沉淀自己的业务检索规则
 
 ## 当前实现
 
@@ -92,6 +93,7 @@ opencode web --port 4096
 
 插件目前暴露了这些工具：
 
+- `rule_append`：向 `.opencode/rules/` 里的规则文件追加业务规则，不存在时自动创建
 - `ov_stage_uploads`：把当前会话最新一条用户消息里的上传附件落盘到 `materials/incoming/`
 - `ov_ingest`：把本地文件或目录导入 OpenViking
 - `memsearch`：搜索 OpenViking
@@ -139,11 +141,17 @@ opencode web --port 4096
 
 然后再用：
 
+- `rule_append`
 - `memsearch`
 - `memgrep`
 - `memglob`
 - `memread`
 - `membrowse`
+
+项目里的规则约定是：
+
+- 项目总原则放在 `AGENTS.md`
+- 用户可持续追加的业务规则放在 `.opencode/rules/*.md`
 
 可选环境变量：
 
