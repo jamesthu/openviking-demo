@@ -7,6 +7,7 @@ import {
   collectUserFileParts,
   materializeAttachments,
 } from "./openviking-attachments.ts"
+import { appendRuleContent } from "./openviking-rules.ts"
 
 const bridgeScript = "scripts/openviking_bridge.py"
 const bridgePython = ".venv/bin/python"
@@ -132,6 +133,35 @@ export const OpenVikingMemoryPlugin: Plugin = async ({
         async execute(_args, context) {
           const result = await stageLatestUserUploads(context.sessionID)
           return JSON.stringify(result, null, 2)
+        },
+      }),
+      rule_append: tool({
+        description:
+          "向 .opencode/rules/ 目录里的业务规则文件追加内容。如果规则文件不存在，会自动按模板创建。适合让用户在对话里逐步补充检索顺序、回答口径和引用要求，而不直接修改项目根 AGENTS.md。",
+        args: {
+          rule_name: tool.schema
+            .string()
+            .describe("规则名，会被转换成文件名，例如 legal-qa 或 fund-report"),
+          content: tool.schema
+            .string()
+            .describe("要追加的规则内容，建议写成清晰的业务指令或回答约束"),
+        },
+        async execute(args, _context) {
+          const filePath = await appendRuleContent({
+            projectRoot: cwd,
+            ruleName: args.rule_name,
+            content: args.content,
+          })
+
+          return JSON.stringify(
+            {
+              ok: true,
+              rule_name: args.rule_name,
+              file_path: filePath,
+            },
+            null,
+            2,
+          )
         },
       }),
       ov_ingest: tool({
